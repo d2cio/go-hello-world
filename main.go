@@ -3,27 +3,28 @@ package main
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"os"
+	"strconv"
 
-	"github.com/go-martini/martini"
+	"github.com/valyala/fasthttp"
 )
 
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "3000"
+	port := "3000"
+	if env, ok := os.LookupEnv("PORT"); ok {
+		if _, err := strconv.ParseUint(env, 10, 16); err == nil {
+			port = env
+		}
 	}
 
-	hostname, err := os.Hostname()
-	if err != nil {
-		log.Fatal("Can't read hostname")
+	hostname, _ := os.Hostname()
+
+	handler := func(ctx *fasthttp.RequestCtx) {
+		ctx.SetContentType("text/html; charset=utf8")
+		fmt.Fprintf(ctx, "Hello from Go!<br>Server listening port %s on host: %s", port, hostname)
 	}
 
-	m := martini.Classic()
-	m.Get("/", func(res http.ResponseWriter, req *http.Request) {
-		res.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(res, "Hello from Go!<br>Server listening port %s on host: %s", port, hostname)
-	})
-	m.RunOnAddr(":" + port)
+	if err := fasthttp.ListenAndServe(":"+port, handler); err != nil {
+		log.Fatal(err)
+	}
 }
